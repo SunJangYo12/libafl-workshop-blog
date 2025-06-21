@@ -43,41 +43,52 @@ use libafl::{
 };
 
 fn main() {
-    // this let's us see LibAFL internal logs for better debugging info
-    // just use RUST_LOG=debug or whatever
+    /*
+    * Tujuan:
+    * hanya fuzzing binary dan fuzzer tidak pakai instrumentasi
+    * hanya mendeteksi crash.
+    */
+
+
+    // ini mari kita lihat log internal libafl untuk info debugging yang lebih baik 
+    // cukup gunakan rust_log = debug atau apapun
     env_logger::init();
 
-    // we don't have any instrumentation in here to tell us when we find a new path
-    // so we just have no feedback
+    // Kami tidak memiliki instrumentasi di sini untuk memberi tahu kami ketika kami menemukan jalur baru 
+    // jadi kami tidak punya umpan balik
     let mut feedback = ConstFeedback::False;
 
-    // Our "objective" is a feedback that tells our fuzzer when we have a win!
-    // we could include timeouts, certain outputs, created files, etc
-    // here we will just win when our target crashes
+    // "objective" kami adalah umpan balik yang memberi tahu fuzzer kami ketika kami menang!     
+    // kita bisa memasukkan batas waktu, output tertentu, file yang dibuat, dll 
+    // di sini kita hanya akan menang ketika target kita macet
     let mut objective = CrashFeedback::new();
 
-    // we need to make our monitor
-    // this is just to report stats back to our screen
-    // libafl includes some nicer ways to show this too, like the TuiMonitor
+    // kita perlu membuat monitor kita 
+    // Ini hanya untuk melaporkan statistik kembali ke layar kita 
+    // libafl termasuk beberapa cara yang lebih bagus untuk menunjukkan ini juga, seperti tuimonitor
     let monitor = SimpleMonitor::new( |s| println!("{s}") );
-    // the event manager takes in events/stats during the fuzzer
-    // here we could programatically respond to those events
-    // but we will just use a manager that sends the events on to the monitor
+
+    
+    // event manager mengikuti acara/statistik selama fuzzer 
+    // di sini kami dapat secara terprogram menanggapi acara tersebut 
+    // tetapi kami hanya akan menggunakan manajer yang mengirimkan acara ke monitor
     let mut mgr = SimpleEventManager::new(monitor);
 
-    // we need to make our executor
-    // this defines how we execute each test case
-    // this could be using qemu, frida, or using a forkserver compiled in
-    // we will just use the most simple "CommandExecutor" which runs a child process
-    // by default it will use stdin to send over the input, unless we specify otherwise
+
+    // kita perlu membuat executor 
+    // ini menentukan bagaimana kita menjalankan setiap test case 
+    // ini bisa menggunakan qemu, frida, atau menggunakan forkserver yang dikompilasi 
+    // kita hanya akan menggunakan "commandexecutor" yang paling sederhana yang menjalankan proses 
+    // secara default itu akan menggunakan stdin untuk mengirim lebih dari input, kecuali jika kita spesifikasi sebaliknya 
     let mut executor = CommandExecutor::builder()
         .program("../fuzz_target/target")
         .build(tuple_list!())
         .unwrap();
 
-    // we need a state to hold our fuzzing state
-    // a state tracks our corpora (inputs and solutions)
-    // and other metadata
+
+    // Kami membutuhkan bagian state untuk memegang fuzzing state 
+    // ia melacak corpus kami (input dan solusi) 
+    // dan metadata lainnya
     let mut state = StdState::new(
         StdRand::with_seed(current_nanos()),
         InMemoryCorpus::<BytesInput>::new(),
@@ -87,12 +98,12 @@ fn main() {
     ).unwrap();
 
 
-    // We need to make our stages
-    // these will be executed in order for each new executed testcase
-    // All we need are normal byte mutations for now
-    // But here we could also have tracing stages,
-    // calibration, generation, sync stages, etc
-    // see implementations of the Stage trait in LibAFL
+    // kita perlu membuat tahapan kita
+    // ini akan dieksekusi untuk setiap testcase baru yang dieksekusi
+    // yang kita butuhkan hanyalah mutasi byte normal untuk saat ini 
+    // tetapi di sini kita juga bisa memiliki tahapan penelusuran, 
+    // kalibrasi, generasi, tahap sinkron, etc
+    // Lihat implementasi sifat panggung di libafl
     let mutator = StdScheduledMutator::with_max_stack_pow(
         havoc_mutations(),
         9,                                                      // maximum mutation iterations
@@ -100,16 +111,17 @@ fn main() {
 
     let mut stages = tuple_list!(StdMutationalStage::new(mutator));
 
-    // we need a scheduler for our fuzzer to choose how to schedule inputs in our corpus
+    // Kami membutuhkan scheduler/penjadwal untuk fuzzer kami untuk memilih cara menjadwalkan input di corpus kami
     let scheduler = RandScheduler::new();
-    // now we can build our fuzzer
+    // Sekarang kita bisa membangun fuzzer kita
     let mut fuzzer = StdFuzzer::new(scheduler, feedback, objective);
 
 
-    // load the initial corpus in our state
-    // since we lack feedback, we have to force this,
-    // otherwise it will only load inputs it deems interesting
-    // which will result in an empty corpus for us
+
+    // Muat korpus awal di bagian state 
+    // karena kami kekurangan umpan balik(feedback), kami harus memaksakan ini, 
+    // jika tidak, ia hanya akan memuat input yang dianggap menarik 
+    // yang akan menghasilkan korpus kosong untuk kami
     state.load_initial_inputs_forced(&mut fuzzer, &mut executor, &mut mgr, &[PathBuf::from("../fuzz_target/corpus/")]).unwrap();
 
     // fuzz

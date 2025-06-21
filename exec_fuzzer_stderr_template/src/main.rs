@@ -62,8 +62,8 @@ use libafl::{
 };
 
 
-// Our Custom Feedback based on stdout
-// You can add members here for tracking state to be used in your is_interesting function
+// Umpan balik khusus kami berdasarkan stdout
+// Anda dapat menambahkan anggota di sini untuk status pelacakan yang akan digunakan dalam fungsi is_interesting Anda
 #[derive(Clone, Debug)]
 struct NewOutputFeedback {
     name: String,
@@ -73,7 +73,7 @@ struct NewOutputFeedback {
 impl NewOutputFeedback {
     fn new(name: &str, observer_name: &str) -> Self {
         // return a new NewOutputFeedback
-        // make sure to instantiate any items you add to the struct here
+        // Pastikan untuk membuat instantiate item yang Anda tambahkan ke struct di sini
         Self {
             name: name.to_string(),
             observer_name: observer_name.to_string(),
@@ -96,21 +96,19 @@ where
        where EM: EventFirer<State = S>,
              OT: ObserversTuple<S>
     {
-        // here we implement is_interesting
-        // we grab output from StdErr and see if it is not before seen 
-        // our fuzzer will take note of inputs that gave new output on stderr
-        // and will further iterate on these inputs
+        // Di sini kami mengimplementasikan IS_Interesting
+        // kami mengambil output dari Stderr dan melihat apakah itu tidak sebelum dilihat 
+        // fuzzer kami akan mencatat input yang memberikan output baru pada stderr 
+        // dan akan lebih lanjut mengulangi input ini
         let observer = observers.match_name::<StdErrObserver>(&self.observer_name)
             .expect("A NewOutputFeedback needs a StdErrObserver");
 
         /*
             TODO
-            Using the output from the StdErrObserver
-            determine if we have observed something new
-            see:
+            Menggunakan output dari StdErrObserver Tentukan apakah kita telah mengamati sesuatu yang baru lihat:
             https://docs.rs/libafl/latest/libafl/observers/stdio/struct.StdErrObserver.html
 
-            refer to other implementations of the trait Feedback for examples:
+            Lihat implementasi lain dari umpan balik sifat untuk contoh:
             https://docs.rs/libafl/latest/libafl/feedbacks/trait.Feedback.html#implementors
 
             return Ok(false) for uninteresting inputs
@@ -131,26 +129,33 @@ impl Named for NewOutputFeedback {
 fn main() {
     env_logger::init();
 
-    // we can use the stdout provided by the program to know when we reach new points
-    // we use a custom feedback for this, supplied observations by a StdErrObserver
+    /* 
+    * Tujuan:
+    * kita pakai instrumentasi dari debuger (-g) dengan menangkap stder
+    * untuk feedback
+    */
+
+
+    // Kami dapat menggunakan stdout yang disediakan oleh program untuk mengetahui kapan kami mencapai poin baru
+    // kami menggunakan umpan balik khusus untuk ini, disediakan pengamatan oleh StdErrObserver
     let observer = StdErrObserver::new("stderr_ob".to_string());
     let mut feedback = NewOutputFeedback::new("stderr_feedback", observer.name());
 
-    // a win will still be any crash we can get
+    // Kemenangan masih akan menjadi kecelakaan yang bisa kita dapatkan
     let mut objective = CrashFeedback::new();
 
     // simple monitor and event manager to print out our progress
     let monitor = SimpleMonitor::new( |s| println!("{s}") );
     let mut mgr = SimpleEventManager::new(monitor);
 
-    // still just executing a subprocess
-    // this time using the target build that prints logs to stderr
+    // Masih hanya menjalankan subproses 
+    // kali ini menggunakan target build yang mencetak log ke stderr
     let mut executor = CommandExecutor::builder()
         .program("../fuzz_target/target_dbg")
         .build(tuple_list!(observer))
         .unwrap();
 
-    // our state
+    // state kita
     let mut state = StdState::new(
         StdRand::with_seed(current_nanos()),
         InMemoryCorpus::<BytesInput>::new(),
@@ -168,14 +173,14 @@ fn main() {
 
     let mut stages = tuple_list!(StdMutationalStage::new(mutator));
 
-    // randomly schedule from our inputs
+    // jadwalkan secara acak dari input kami
     let scheduler = RandScheduler::new();
     let mut fuzzer = StdFuzzer::new(scheduler, feedback, objective);
 
 
-    // load the initial corpus in our state
-    // we have feedback now, so we dont have to use _forced anymore
-    // as long as our feedback can tell what inputs are interesting
+    // Muat korpus awal di bagian state kami 
+    // kami memiliki umpan balik sekarang, jadi kami tidak perlu menggunakan _forced lagi 
+    // selama umpan balik kami(feedback) dapat mengetahui input apa yang menarik
     state.load_initial_inputs_forced(&mut fuzzer, &mut executor, &mut mgr, &[PathBuf::from("../fuzz_target/corpus/")]).unwrap();
 
     // fuzz
