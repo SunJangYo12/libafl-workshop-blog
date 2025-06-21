@@ -77,10 +77,16 @@ fn main() {
     shmem.write_to_env("__AFL_SHM_ID").unwrap();
     let shmembuf = shmem.as_mut_slice();
 
-    // build observer berdasarkan buffer yang dibagikan dengan target
-    let edges_observer = unsafe {HitcountsMapObserver::new(StdMapObserver::new("shared_mem", shmembuf))};
+    // buat observer berdasarkan buffer yang dibagikan dengan target
+    // menggunakan HitcountsMapObserver untuk membaca coverage map dari shared memory.
+    let edges_observer = unsafe {
+        HitcountsMapObserver::new(StdMapObserver::new("shared_mem", shmembuf))
+    };
+
     // Gunakan observer coverage untuk umpan balik berdasarkan mendapatkan cakupan maksimum
+    // Menggunakan MaxMapFeedback untuk mendeteksi jalur eksekusi baru.
     let mut feedback = MaxMapFeedback::tracking(&edges_observer, true, false);
+
 
     // win on an crash
     let mut objective = CrashFeedback::new();
@@ -91,6 +97,7 @@ fn main() {
     
     // kali ini kita dapat menggunakan executor forkserver, yang menggunakan instrumen di server fork 
     // mendapatkan jumlah eksekutif yang lebih besar per detik dengan tidak harus memulai proses untuk setiap menjalankan
+    // artinya target binary hanya di-fork sekali, lalu setiap testcase dijalankan lewat proses child - jauh lebih cepat
     let mut executor = ForkserverExecutor::builder()
         .program("../fuzz_target/target_instrumented")
         .shmem_provider(&mut shmem_provider)

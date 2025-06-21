@@ -64,8 +64,8 @@ use libafl::{
     },
 };
 
-// This is our structure that will implement Mutator
-// add any needed members here
+// Ini adalah struktur kami yang akan mengimplementasikan mutator 
+// menambahkan anggota yang diperlukan di sini
 struct AlphaByteSwapMutator {
 }
 
@@ -80,24 +80,27 @@ where
         input: &mut I,
         _stage_idx: i32,
     ) -> Result<MutationResult, Error> {
-        // here we apply our random mutation
-
+        // Di sini kami menerapkan mutasi acak kami
         /*
             TODO
 
-            Given the input, mutate it in a smart way for our target
+            Mengingat input, bermutasinya dengan cara yang cerdas untuk target kami
 
             Our input for this implements HasBytesVec
             so you can use input.bytes_mut() to get a mutable vector
 
-            See other implementors of Mutate for examples in the repo
+            Input kami untuk ini mengimplementasikan HasBytesVec
+            sehingga Anda dapat menggunakan input.bytes_mut()
+            untuk mendapatkan vektor yang bisa berubah
+
+            Lihat implementor mutate lainnya untuk contoh dalam repo
             https://docs.rs/libafl/latest/libafl/mutators/trait.Mutator.html#implementors
 
-            You can use state.rand_mut() to access a source of random
+            Anda dapat menggunakan state.rand_mut() untuk mengakses sumber acak
             https://docs.rs/libafl_bolts/0.11.1/libafl_bolts/rands/trait.Rand.html
 
-            return Ok(MutationResult::Mutated) when you mutate the input
-            or Ok(MutationResult::Skipped) when you don't
+            return Ok(MutationResult::Mutated) Saat Anda bermutasi input
+            or Ok(MutationResult::Skipped) Saat Anda tidak
         */
 
         Ok(MutationResult::Skipped)
@@ -112,7 +115,7 @@ impl Named for AlphaByteSwapMutator {
 
 impl AlphaByteSwapMutator {
     fn new() -> Self {
-        // Add any initialization of our mutator needed here
+        // Tambahkan inisialisasi mutator kami yang dibutuhkan di sini
         Self {
         }
     }
@@ -123,8 +126,8 @@ fn main() {
 
     env_logger::init();
 
-    // this will be the same as the aflcc fuzzer
-    // except we will specify a custom mutator
+    // Ini akan sama dengan fuzzer aflcc 
+    // kecuali kami akan menentukan mutator khusus
 
     // first allocate shared memory
     let mut shmem_provider = UnixShMemProvider::new().unwrap();
@@ -159,7 +162,7 @@ fn main() {
         &mut objective,
     ).unwrap();
 
-    // we will specify our custom mutator, as well as two other helpful mutators for growing or shrinking
+    // Kami akan menentukan mutator khusus kami, serta dua mutator bermanfaat lainnya untuk tumbuh atau menyusut
     let mutator = StdScheduledMutator::with_max_stack_pow(
         tuple_list!(
             AlphaByteSwapMutator::new(),
@@ -175,8 +178,9 @@ fn main() {
     let mut fuzzer = StdFuzzer::new(scheduler, feedback, objective);
 
 
-    // load the initial corpus in our state
-    // we can let it gather feedback about what inputs are useful or not now
+    // Muat korpus awal di state
+    // kami dapat membiarkannya mengumpulkan umpan balik tentang
+    // input apa yang berguna atau tidak sekarang
     state.load_initial_inputs(&mut fuzzer, &mut executor, &mut mgr, &[PathBuf::from("../fuzz_target/corpus/")]).unwrap();
 
     // fuzz
