@@ -60,19 +60,26 @@ fn main() {
 
     env_logger::init();
 
-    // This time we are going to have feedback based on the compiled in instrumentation
-    // we need a MaxMapFeedback, which reads from the map from a HitcountsMapObserver
-    // this will use shared memory in the target process for accessing the map
+    /*
+    * Note:
+    * menggunakan instrumentasi dari AFL++ sebagai feedback
+    */
 
+    
+    // Kali ini kita akan mendapat umpan balik berdasarkan yang dikompilasi dalam instrumentasi 
+    // kita membutuhkan maxmapfeedback, yang dibaca dari peta dari hitcountsmapobserver 
+    // ini akan menggunakan memori bersama dalam proses target untuk mengakses peta
+    
     // first allocate shared memory
     let mut shmem_provider = UnixShMemProvider::new().unwrap();
     let mut shmem = shmem_provider.new_shmem(MAP_SIZE).unwrap();
-    // write the id to the env var for the forkserver
+    // Tulis ID ke env var untuk forkserver
     shmem.write_to_env("__AFL_SHM_ID").unwrap();
     let shmembuf = shmem.as_mut_slice();
-    // build an observer based on that buffer shared with the target
+
+    // build observer berdasarkan buffer yang dibagikan dengan target
     let edges_observer = unsafe {HitcountsMapObserver::new(StdMapObserver::new("shared_mem", shmembuf))};
-    // use that observed coverage to feedback based on obtaining maximum coverage
+    // Gunakan observer coverage untuk umpan balik berdasarkan mendapatkan cakupan maksimum
     let mut feedback = MaxMapFeedback::tracking(&edges_observer, true, false);
 
     // win on an crash
@@ -81,8 +88,9 @@ fn main() {
     let monitor = SimpleMonitor::new( |s| println!("{s}") );
     let mut mgr = SimpleEventManager::new(monitor);
 
-    // This time we can use a forkserver executor, which uses a instrumented in fork server
-    // it gets a greater number of execs per sec by not having to init the process for each run
+    
+    // kali ini kita dapat menggunakan executor forkserver, yang menggunakan instrumen di server fork 
+    // mendapatkan jumlah eksekutif yang lebih besar per detik dengan tidak harus memulai proses untuk setiap menjalankan
     let mut executor = ForkserverExecutor::builder()
         .program("../fuzz_target/target_instrumented")
         .shmem_provider(&mut shmem_provider)
@@ -98,7 +106,7 @@ fn main() {
         &mut objective,
     ).unwrap();
 
-    // here we could merge in tokens_mutations(), since the afl-cc can set up autodict
+    // Di sini kita bisa bergabung di tokens_mutations(), karena afl-cc dapat mengatur autodict
     let mutator = StdScheduledMutator::with_max_stack_pow(
         havoc_mutations(),
         9,
@@ -110,8 +118,9 @@ fn main() {
     let mut fuzzer = StdFuzzer::new(scheduler, feedback, objective);
 
 
-    // load the initial corpus in our state
-    // we can let it gather feedback about what inputs are useful or not now
+
+    // Muat korpus awal di bagian state 
+    // kami dapat membiarkannya mengumpulkan umpan balik tentang input apa yang berguna atau tidak sekarang
     state.load_initial_inputs(&mut fuzzer, &mut executor, &mut mgr, &[PathBuf::from("../fuzz_target/corpus/")]).unwrap();
 
     // fuzz

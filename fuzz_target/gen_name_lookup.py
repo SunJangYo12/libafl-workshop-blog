@@ -96,7 +96,7 @@ const char* uid_to_name(const char* uid) {{
 
     random.seed(42)
 
-    prog += gen_tree(uid_len, max_depth=6, count=8, num_names=len(names), vulnchance=0.15)
+    prog += gen_tree(uid_len, max_depth=4, count=8, num_names=len(names), vulnchance=0.15)
 
     prog += "}\n";
     print(prog)
